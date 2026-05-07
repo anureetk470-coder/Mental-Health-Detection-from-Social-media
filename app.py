@@ -1,11 +1,23 @@
 from pathlib import Path
+import sys
 
 import joblib
 import pandas as pd
 import streamlit as st
 
-from src.nlp_pipeline import preprocess_text
-from src.train_model import DATA_PATH, FIGURE_DIR, MODEL_PATH, load_data, train_and_evaluate
+PROJECT_ROOT = Path(__file__).resolve().parent
+SRC_DIR = PROJECT_ROOT / "src"
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+try:
+    from src.nlp_pipeline import preprocess_text
+    from src.train_model import DATA_PATH, FIGURE_DIR, MODEL_PATH, load_data, train_and_evaluate
+except ModuleNotFoundError:
+    from nlp_pipeline import preprocess_text
+    from train_model import DATA_PATH, FIGURE_DIR, MODEL_PATH, load_data, train_and_evaluate
 
 
 st.set_page_config(
@@ -85,67 +97,3 @@ st.markdown(
 )
 
 left, right = st.columns([1.05, 0.95], gap="large")
-
-with left:
-    st.subheader("Try a post")
-    sample_text = st.text_area(
-        "Social media post",
-        value="I feel overwhelmed by deadlines and cannot relax.",
-        height=150,
-    )
-
-    if st.button("Predict state", use_container_width=True):
-        prediction = model.predict(pd.DataFrame({"post": [sample_text]}))[0]
-        color = prediction_color(prediction)
-        cleaned = preprocess_text(sample_text)
-
-        st.markdown(
-            f"""
-            <div class="result-box">
-                <div class="small-label">Predicted class</div>
-                <h2 style="color:{color}; margin-top:6px;">{prediction.title()}</h2>
-                <div class="small-label">Cleaned text</div>
-                <p style="color:darkslategray;">{cleaned or "No useful tokens after preprocessing."}</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    st.subheader("Preprocessing pipeline")
-    st.write(
-        "Lowercasing, URL removal, emoji removal, punctuation removal, tokenization, stopword removal, and lemmatization."
-    )
-
-with right:
-    st.subheader("Dataset snapshot")
-    st.dataframe(df[["post", "label", "clean_post"]], use_container_width=True, height=280)
-
-    st.subheader("Class counts")
-    st.bar_chart(df["label"].value_counts())
-
-tabs = st.tabs(["Visualizations", "Model notes", "Ethics"])
-
-with tabs[0]:
-    col1, col2 = st.columns(2)
-    class_plot = FIGURE_DIR / "class_distribution.png"
-    matrix_plot = FIGURE_DIR / "confusion_matrix.png"
-    if not class_plot.exists() or not matrix_plot.exists():
-        train_and_evaluate(DATA_PATH)
-    with col1:
-        st.image(str(class_plot), caption="Class distribution", use_container_width=True)
-    with col2:
-        st.image(str(matrix_plot), caption="Confusion matrix", use_container_width=True)
-
-with tabs[1]:
-    st.write(
-        "The project compares Logistic Regression, Linear SVM, and Naive Bayes. "
-        "Features combine TF-IDF n-grams with simple numeric text statistics such as word count, punctuation counts, and keyword signals."
-    )
-    report_path = Path("reports/model_report.txt")
-    if report_path.exists():
-        st.code(report_path.read_text(encoding="utf-8"), language="text")
-
-with tabs[2]:
-    st.info(
-        "This app is for learning only. It should not be used to diagnose people, monitor individuals, or replace professional mental health support."
-    )
