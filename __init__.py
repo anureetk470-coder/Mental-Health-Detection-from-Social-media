@@ -1,0 +1,9 @@
+mental-health-detection-from-social-media/
+  app.py
+  requirements.txt
+  data/
+    sample_mental_health_posts.csv
+  src/
+    __init__.py
+    nlp_pipeline.py
+    train_model.py
